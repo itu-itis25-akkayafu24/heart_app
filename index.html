@@ -1,55 +1,59 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-<meta charset="UTF-8">
+<meta charset="UTF-8" />
 <title>Seni Seviyorum</title>
 
 <style>
-body {
-  margin: 0;
-  background: #ffe6f0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  overflow: hidden;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-}
+  body {
+    margin: 0;
+    background: #ffe6f0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  }
 
-canvas {
-  background: transparent;
-}
+  canvas { background: transparent; }
 
-.overlay {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  pointer-events: none;
-}
+  /* Mesaj katmanı */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    pointer-events: none;
+    z-index: 10;
+  }
 
-.msg {
-  padding: 20px 30px;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
-  color: #7a0026;
-  font-size: 32px;
-  font-weight: 800;
-  text-align: center;
-  line-height: 1.4;
-  animation: fadeIn 1s ease;
-}
+  .msg {
+    padding: 20px 30px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+    color: #7a0026;
+    font-size: 32px;
+    font-weight: 800;
+    text-align: center;
+    line-height: 1.4;
+    animation: fadeIn 0.6s ease;
+    max-width: min(820px, 92vw);
+  }
 
-.fade-out {
-  animation: fadeOut 0.8s ease forwards;
-}
+  .fade-out { animation: fadeOut 0.8s ease forwards; }
 
-@keyframes fadeOut {
-  to { opacity: 0; transform: translateY(-20px); }
-}
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeOut {
+    to { opacity: 0; transform: translateY(-20px); }
+  }
 </style>
 </head>
 
@@ -62,96 +66,145 @@ canvas {
 <canvas id="canvas" width="650" height="650"></canvas>
 
 <script>
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
-const overlay = document.getElementById("overlay");
-const messageBox = document.getElementById("messageBox");
+  const canvas = document.getElementById("canvas");
+  const ctx = canvas.getContext("2d");
+  const overlay = document.getElementById("overlay");
+  const messageBox = document.getElementById("messageBox");
 
-// === MESAJ AYARI ===
-const urlParams = new URLSearchParams(window.location.search);
-const messageText =
-  urlParams.get("msg") ||
-  "2025'in kattığı en güzel şey sensin\nseni çok seviyorum 💖";
+  // Süreler (ms)
+  const T1_SHOW = 2500;   // "özür dilerim aşkım" ekranda kalma
+  const T_FADE  = 800;    // fade-out süresi
+  const T2_AFTER_HEART_DONE = 600; // kalp bitince son mesajdan önce bekleme
 
-// Mesajı satırlara böl
-messageBox.innerHTML = messageText
-  .split("\n")
-  .map(line => `<div>${line}</div>`)
-  .join("");
+  // Son mesaj (istersen URL'den de değiştirebilirsin)
+  const urlParams = new URLSearchParams(window.location.search);
+  const finalMsg =
+    urlParams.get("msg") ||
+    "2025'in hayatıma kattığı en güzel şey sensin\nnice birlikte yeni yıllara\nseni çok seviyorum 💖";
 
-// === KALP ANİMASYONU ===
-const SCALE = 16;
-const CENTER_X = canvas.width / 2;
-const CENTER_Y = canvas.height / 2 + 40;
-
-let t = 0;
-let points = [];
-let phase = "intro";
-
-function heart(t) {
-  return {
-    x: 16 * Math.pow(Math.sin(t), 3),
-    y:
-      13 * Math.cos(t) -
-      5 * Math.cos(2 * t) -
-      2 * Math.cos(3 * t) -
-      Math.cos(4 * t)
-  };
-}
-
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  ctx.save();
-  ctx.translate(CENTER_X, CENTER_Y);
-
-  ctx.beginPath();
-  for (let i = 0; i < points.length; i++) {
-    const p = points[i];
-    if (i === 0) ctx.moveTo(p.x * SCALE, -p.y * SCALE);
-    else ctx.lineTo(p.x * SCALE, -p.y * SCALE);
+  function setOverlayText(text) {
+    messageBox.innerHTML = text
+      .split("\n")
+      .map(line => `<div>${line}</div>`)
+      .join("");
   }
 
-  ctx.strokeStyle = "#d6003b";
-  ctx.lineWidth = 3;
-  ctx.lineCap = "round";
-  ctx.stroke();
-
-  if (phase === "done") {
-    ctx.font = "800 34px 'Comic Sans MS', cursive";
-    ctx.fillStyle = "#800020";
-    ctx.textAlign = "center";
-    ctx.fillText("seni seviyorum", 0, 20);
-    ctx.font = "800 28px 'Comic Sans MS', cursive";
-    ctx.fillText("iyi ki varsın", 0, 60);
+  function showOverlay(text) {
+    overlay.style.display = "flex";
+    overlay.classList.remove("fade-out");
+    setOverlayText(text);
   }
 
-  ctx.restore();
-}
+  function hideOverlay() {
+    overlay.classList.add("fade-out");
+    setTimeout(() => {
+      overlay.style.display = "none";
+      overlay.classList.remove("fade-out");
+    }, T_FADE);
+  }
 
-function animate() {
-  if (phase === "drawing") {
-    if (t < Math.PI * 2) {
-      points.push(heart(t));
-      t += 0.045;
-    } else {
-      phase = "done";
+  // === KALP ANİMASYONU ===
+  const SCALE_BASE = 16;
+  const CENTER_X = canvas.width / 2;
+  const CENTER_Y = canvas.height / 2 + 40;
+
+  let t = 0;
+  let points = [];
+  let phase = "intro";        // intro -> drawing -> done
+  let beat = 0;               // kalp atışı fazı
+  let finalShown = false;
+
+  function heart(tt) {
+    return {
+      x: 16 * Math.pow(Math.sin(tt), 3),
+      y: 13 * Math.cos(tt)
+        - 5 * Math.cos(2 * tt)
+        - 2 * Math.cos(3 * tt)
+        - Math.cos(4 * tt)
+    };
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Kalp "done" olunca nabız (büyü-küçül)
+    const pulse = (phase === "done")
+      ? (1 + Math.sin(beat) * 0.04)
+      : 1;
+
+    ctx.save();
+    ctx.translate(CENTER_X, CENTER_Y);
+    ctx.scale(pulse, pulse);
+
+    // Kalp çizgisi
+    ctx.beginPath();
+    for (let i = 0; i < points.length; i++) {
+      const p = points[i];
+      const x = p.x * SCALE_BASE;
+      const y = -p.y * SCALE_BASE;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
     }
+
+    ctx.strokeStyle = "#d6003b";
+    ctx.lineWidth = 3;
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    ctx.stroke();
+
+    // Kalp içi yazı: kalp çizimi bittikten sonra sürekli görünür
+    if (phase === "done") {
+      ctx.font = "800 34px 'Comic Sans MS', cursive";
+      ctx.fillStyle = "#800020";
+      ctx.textAlign = "center";
+      ctx.fillText("seni seviyorum", 0, 20);
+      ctx.font = "800 28px 'Comic Sans MS', cursive";
+      ctx.fillText("iyi ki varsın", 0, 60);
+    }
+
+    ctx.restore();
   }
 
-  draw();
-  requestAnimationFrame(animate);
-}
+  function animate() {
+    if (phase === "drawing") {
+      if (t < Math.PI * 2) {
+        points.push(heart(t));
+        t += 0.045;
+      } else {
+        phase = "done";
+      }
+    }
 
-setTimeout(() => {
-  overlay.classList.add("fade-out");
+    if (phase === "done") {
+      beat += 0.08;
+
+      // Kalp tamamlandıktan sonra final mesajı bir kez göster
+      if (!finalShown) {
+        finalShown = true;
+        setTimeout(() => {
+          showOverlay(finalMsg);   // final mesaj ekranda kalacak
+        }, T2_AFTER_HEART_DONE);
+      }
+    }
+
+    draw();
+    requestAnimationFrame(animate);
+  }
+
+  // === SIRA AKIŞI ===
+
+  // 1) Başlangıç mesajı
+  showOverlay("özür dilerim aşkım");
+
+  // 2) Bu mesaj 2.5s görünsün, sonra kaybolsun ve kalp çizimine başla
   setTimeout(() => {
-    overlay.style.display = "none";
-    phase = "drawing";
-  }, 700);
-}, 3000);
+    hideOverlay();
+    setTimeout(() => {
+      phase = "drawing"; // kalp + iç yazı başlar
+    }, T_FADE);
+  }, T1_SHOW);
 
-requestAnimationFrame(animate);
+  requestAnimationFrame(animate);
 </script>
 
 </body>
