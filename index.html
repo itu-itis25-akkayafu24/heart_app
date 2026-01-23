@@ -22,7 +22,7 @@
   .overlay {
     position: fixed;
     inset: 0;
-    display: flex;
+    display: none;
     justify-content: center;
     align-items: center;
     pointer-events: none;
@@ -44,15 +44,9 @@
     max-width: min(820px, 92vw);
   }
 
-  .fade-out { animation: fadeOut 0.8s ease forwards; }
-
   @keyframes fadeIn {
     from { opacity: 0; transform: translateY(10px); }
     to   { opacity: 1; transform: translateY(0); }
-  }
-
-  @keyframes fadeOut {
-    to { opacity: 0; transform: translateY(-20px); }
   }
 </style>
 </head>
@@ -71,16 +65,14 @@
   const overlay = document.getElementById("overlay");
   const messageBox = document.getElementById("messageBox");
 
-  // Süreler (ms)
-  const T1_SHOW = 2500;   // "özür dilerim aşkım" ekranda kalma
-  const T_FADE  = 800;    // fade-out süresi
-  const T2_AFTER_HEART_DONE = 600; // kalp bitince son mesajdan önce bekleme
+  // Kalp bittikten sonra final mesajdan önce bekleme (ms)
+  const T2_AFTER_HEART_DONE = 600;
 
-  // Son mesaj (istersen URL'den de değiştirebilirsin)
+  // Son mesaj (URL ile değiştirilebilir)
   const urlParams = new URLSearchParams(window.location.search);
   const finalMsg =
     urlParams.get("msg") ||
-    "2025'in hayatıma kattığı en güzel şey sensin\nnice birlikte yeni yıllara\nseni çok seviyorum 💖";
+    "iyi ki doğdun annecim\nnice yıllara\nseni çok seviyorum 💖";
 
   function setOverlayText(text) {
     messageBox.innerHTML = text
@@ -90,17 +82,8 @@
   }
 
   function showOverlay(text) {
-    overlay.style.display = "flex";
-    overlay.classList.remove("fade-out");
     setOverlayText(text);
-  }
-
-  function hideOverlay() {
-    overlay.classList.add("fade-out");
-    setTimeout(() => {
-      overlay.style.display = "none";
-      overlay.classList.remove("fade-out");
-    }, T_FADE);
+    overlay.style.display = "flex";
   }
 
   // === KALP ANİMASYONU ===
@@ -110,8 +93,8 @@
 
   let t = 0;
   let points = [];
-  let phase = "intro";        // intro -> drawing -> done
-  let beat = 0;               // kalp atışı fazı
+  let phase = "drawing"; // direkt çizimle başla
+  let beat = 0;
   let finalShown = false;
 
   function heart(tt) {
@@ -127,7 +110,6 @@
   function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Kalp "done" olunca nabız (büyü-küçül)
     const pulse = (phase === "done")
       ? (1 + Math.sin(beat) * 0.04)
       : 1;
@@ -136,7 +118,6 @@
     ctx.translate(CENTER_X, CENTER_Y);
     ctx.scale(pulse, pulse);
 
-    // Kalp çizgisi
     ctx.beginPath();
     for (let i = 0; i < points.length; i++) {
       const p = points[i];
@@ -152,7 +133,6 @@
     ctx.lineCap = "round";
     ctx.stroke();
 
-    // Kalp içi yazı: kalp çizimi bittikten sonra sürekli görünür
     if (phase === "done") {
       ctx.font = "800 34px 'Comic Sans MS', cursive";
       ctx.fillStyle = "#800020";
@@ -178,11 +158,10 @@
     if (phase === "done") {
       beat += 0.08;
 
-      // Kalp tamamlandıktan sonra final mesajı bir kez göster
       if (!finalShown) {
         finalShown = true;
         setTimeout(() => {
-          showOverlay(finalMsg);   // final mesaj ekranda kalacak
+          showOverlay(finalMsg);
         }, T2_AFTER_HEART_DONE);
       }
     }
@@ -190,19 +169,6 @@
     draw();
     requestAnimationFrame(animate);
   }
-
-  // === SIRA AKIŞI ===
-
-  // 1) Başlangıç mesajı
-  showOverlay("özür dilerim aşkım");
-
-  // 2) Bu mesaj 2.5s görünsün, sonra kaybolsun ve kalp çizimine başla
-  setTimeout(() => {
-    hideOverlay();
-    setTimeout(() => {
-      phase = "drawing"; // kalp + iç yazı başlar
-    }, T_FADE);
-  }, T1_SHOW);
 
   requestAnimationFrame(animate);
 </script>
